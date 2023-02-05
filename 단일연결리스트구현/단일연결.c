@@ -1,51 +1,33 @@
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
-// 지금의 경우는 포인터 하나(head pointer ??)로 첫 번째 노드에 접근하는것을 하는 것이다.
+
 typedef struct NODE {
-	// NODE구조체에 대한 포인터 선언
 	struct NODE* next;
 	char szData[64];
 }NODE;
 
-// 전역변수 설정, NULL 초기화 안해도 전역변수라 자동으로 NULL로 초기화 된다.
-// 연결리스트 데이터가 있다면 g_pHead가 가르키고 있을 것, => not NULL
 NODE* g_pHead = NULL;
 
-/*연결 리스트 전체 데이터 출력*/
 void PrintList(void){
 
-	//// 논리적으로는 이상이 없지만 상당히 심각한 문제가 있는 코드라고 한다. 당연히 안되는 .., 난 이유를 모른다.
-	//while (g_pHead != NULL) {
-	//	// p는 주소가 되겟다.
-	//	printf("[%p] %s, next[%p]\n",g_pHead, g_pHead->szData, g_pHead->next);
-	//	// 4_ 이게 문제, 
-	//	g_pHead = g_pHead->next;
-	//}
 
-	// 이렇게 해줘야 한다.
 	NODE* pHead = g_pHead;
 	while (pHead != NULL) {
-		// p는 주소가 되겟다.
 		printf("[%p] %s, next[%p]\n",pHead, pHead->szData, pHead->next);
-		// 4_ 이게 문제, 
 		pHead = pHead->next;
 	}
 	putchar('\n');
 }
 
-// 결과 확인, 이때 노드를 통으로 받을 것인가, char pointer로 받을 것이냐
-int InsertNewNode(char* pszData) { // 여기선 포인터로 받는다.
-	// 새 노드 하나 생성했다. 이제 이걸 어디에 추가할 것인가? 1_ => 기존 데이터와 g_pHead 사이에 새로운걸 넣을 것이다.
-	NODE* pNode = (NODE*)malloc(sizeof(NODE)); // 이건 초기화가 안됨
-	memset(pNode, 0, sizeof(NODE)); // 이렇게 0으로 모두 초기화 해주는데, 이건 해도되고 안 해도된다, 근데 해두는게 나쁠것이 없다고 한다.
-	// pNode->szData 얘가 데이터를 담고있다.
+int InsertNewNode(char* pszData) { 
+	NODE* pNode = (NODE*)malloc(sizeof(NODE));
+	memset(pNode, 0, sizeof(NODE)); 
 	strcpy_s(pNode->szData, sizeof(pNode->szData), pszData);
 
-	// 2_위의 데이터를 만듬
 	if (g_pHead == NULL) {
 		g_pHead = pNode;
-	}else{ // 여기가 중요, 기존의 포인터(변수)가 재할당 되면 기존의 노드를 가르키던것이 사라지니 접근이 안된다. 그래서 먼저 새로운 노드가 기존의 노드를 가르키게 만들어야 한다. 그 다음 헤드포인터가 new를 가르키게한다.
+	}else{ 
 		pNode->next = g_pHead;
 		g_pHead = pNode;
 
@@ -55,11 +37,58 @@ int InsertNewNode(char* pszData) { // 여기선 포인터로 받는다.
 }
 
 // 삭제 고고
+void ReleaseList(void){
+	NODE* pTemp = g_pHead; // 첫 번째 노드에 접근하는 포인터 => ? 3번째에서 첫 번째 노드가 찍히는데
+	while (pTemp != NULL) { // 반복문 안에 변수 설정이 매우 안좋았지만, 최근에는 컴파일러 최적화 때문에 많이 좋아졌다고 한다.
+		NODE* pDelete = pTemp;
+		pTemp = pTemp->next;
+
+		// 어떤게 삭제되는지 보여줌
+		printf("Delete: [%p} %s\n", pDelete, pDelete->szData);
+		free(pDelete);
+	}
+}
+
+// 삭제를 위해 데이터를 찾아보자
+int FindData(char* pszData) {
+	NODE* pTemp = g_pHead;
+	while (pTemp != NULL) {
+		// 데이터가 같은지 비교
+		if (strcmp(pTemp->szData, pszData) == 0) {
+			return 1;
+		}
+		pTemp = pTemp->next;
+	}
+		return 0;
+}
+
+int Delete(char* pszData) { // 삭제하고 다음으로 넘겨야한다.
+	NODE* pTemp = g_pHead;
+	// 앞에것을 알고 있어야 한다.? 삭제될 것의
+	NODE* pPrev = NULL;
+	while (pTemp != NULL) {
+		if (strcmp(pTemp->szData, pszData) == 0) {
+			// 삭제
+			printf("DeleteData(): %s\n", pTemp->szData);
+			if (pPrev != NULL)
+			{
+			pPrev->next = pTemp->next; // 내가 사라지니.. 내 다음 애를 가리켜라 
+			}
+			else {
+				// 삭제할 데이터가 첫 번째인 경우(head)
+				g_pHead = pTemp->next;
+			}
+			free(pTemp);
+			return 1;
+
+		}
+			pPrev = pTemp; // 데이터 백업
+			pTemp = pTemp->next;
+	}
+}
 
 int main(void) {
-	// List 테스트를 위한 코드, 이렇게 세트로 만들어 놓고, 계속 테스트가 돌아가야 한다.
 	
-	// 3_
 	InsertNewNode("TEST01");
 	PrintList();
 	InsertNewNode("TEST02");
@@ -67,11 +96,28 @@ int main(void) {
 	InsertNewNode("TEST03");
 	PrintList();
 
+	if (FindData("TEST01") == 1) { // 1, 2 못찾음 ㅠㅠ 
+		printf("FINDD DATA(): TEST01 found\n");
+	}
+	if (FindData("TEST02") == 1) {
+		printf("FINDD DATA(): TEST02 found\n");
+	}
+	if (FindData("TEST03") == 1) {
+		printf("FINDD DATA(): TEST03 found\n");
+	}
+
+	Delete("TEST01");
+	Delete("TEST02");
+	Delete("TEST03");
+
+	ReleaseList();
+
 	return 0;
 }
 
-// 연결리스트 코딩순서 !!
-// 1. 리스트 전체 출력 함수 작성(while문)
-// 2. 새 노드 추가 함수 작성(개발에 앞서 절차를 정확히 글로 기술) => 이게 본격적 기능, malloc + free, test에선 free 안해도 된다. 이건 나중에 !
-// 3. 리스트 삭제 함수 작성
-// 4. 각 함수를 작성할 때 마다 main에서 테스트 코드 실행
+// 단일연결에서 삭제가 가장 어려운데, 그 이유는 삭제할 놈의 앞의 노드를 찾아서 삭제 후, 그 다음 노드에 연결을 시켜야 하기 때문이다.
+// 이 문제를 해결하기 위해 더미 데이터를 사용함, 아니면 double linked list를 사용하는게 좋다고 한다.
+// 그러나 head나 tail의 삭제에서는 딱히 단일연결리스트에선 문제가 되지 않는다.
+
+// 싱글에선 앞에 더미를 두는게, 중간에 있는 놈을 삭제해야 될때 베스트가 되겠다.
+// 더미노드가 없으면 항상 앞전노드를 추가하는 것을 고민해봐야 한다.
